@@ -161,11 +161,16 @@ function nwm_settings_page() {
                 <div class="postbox-container side">  
 					<div class="metabox-holder">
                         <div class="postbox">
-                            <h3 class="hndle"><span><?php _e( 'About', 'nwm' ); ?></span><span style="float:right;"><?php _e( 'Version', 'nwm' ); ?> <?php echo NWN_VERSION_NUM; ?></span></h3>
+                            <h3 class="hndle"><span><?php _e( 'Changelog', 'nwm' ); ?></span><span style="float:right;"><?php _e( 'Version', 'nwm' ); ?> <?php echo NWN_VERSION_NUM; ?></span></h3>
                             <div class="inside">
-                                <p><strong>Nomad World Map </strong><?php echo sprintf( __( 'by <a href="%s">Tijmen Smit</a>', 'nwm' ), 'http://twitter.com/tijmensmit' ); ?></p>
-                                <p><?php echo sprintf( __( 'If you like this plugin, please rate it <strong>5 stars</strong> on <a href="%s">WordPress.org</a> or consider making a <a href="%s">donation</a> to support the development.', 'nwm' ), 'http://wordpress.org/plugins/nomad-world-map/', 'https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=NFZ6NCFKXQ8EA' ); ?></p>        
-                                <p><?php echo sprintf( __( 'Since <strong>Version 1.3.2</strong> the further development of the plugin is done by <a href="%s">Guido Grun</a>.', 'nwm' ), 'https://cathced.in' ); ?></p>        
+                                <?php
+                                $nwm_change_log_path = dirname( __DIR__ ) . '/CHANGELOG.md';
+                                if ( ! is_readable( $nwm_change_log_path ) ) {
+                                    $nwm_change_log_path = dirname( __DIR__ ) . '/change_log.txt';
+                                }
+                                $nwm_change_log = is_readable( $nwm_change_log_path ) ? file_get_contents( $nwm_change_log_path ) : '';
+                                ?>
+                                <pre style="max-height:220px;overflow:auto;background:#fff;border:1px solid #ddd;padding:10px;white-space:pre-wrap;"><?php echo esc_html( $nwm_change_log ); ?></pre>
                             </div>
                         </div>
                 	</div>  
@@ -197,6 +202,7 @@ function nwm_settings_page() {
 function nwm_settings_check() {
 	
 	$output = array();
+	$post_data = wp_unslash( $_POST );
 	$zoom_options = array( 
         'first', 
         'schedule_start', 
@@ -210,43 +216,46 @@ function nwm_settings_check() {
     );
 		
 	/* Check if we have a valid zoom-to option, otherwise set it to last */
-	if ( in_array( $_POST['nwm-zoom-to'], $zoom_options ) ) {
-		$output['zoom_to'] = wp_filter_nohtml_kses( $_POST['nwm-zoom-to'] );
+	$zoom_to = isset( $post_data['nwm-zoom-to'] ) ? $post_data['nwm-zoom-to'] : '';
+	if ( in_array( $zoom_to, $zoom_options, true ) ) {
+		$output['zoom_to'] = wp_filter_nohtml_kses( $zoom_to );
 	} else {
 		$output['zoom_to'] = 'last';
 	}
 	
 	/* Check if we have a valid map type, otherwise set it to roadmap */
-	if ( in_array( $_POST['nwm-map-type'], $map_types ) ) {
-		$output['map_type'] = wp_filter_nohtml_kses( $_POST['nwm-map-type'] );
+	$map_type = isset( $post_data['nwm-map-type'] ) ? $post_data['nwm-map-type'] : '';
+	if ( in_array( $map_type, $map_types, true ) ) {
+		$output['map_type'] = wp_filter_nohtml_kses( $map_type );
 	} else {
 		$output['map_type'] = 'roadmap';
 	}
 	
 	/* Check if we have a valid zoom level, it has to be between 1 or 12. If not set it to the default of 3 */
-	if ( $_POST['nwm-zoom-level'] >= 1 && $_POST['nwm-zoom-level'] <= 12 ) {
-		$output['zoom_level'] = $_POST['nwm-zoom-level'];
+	$zoom_level = isset( $post_data['nwm-zoom-level'] ) ? absint( $post_data['nwm-zoom-level'] ) : 0;
+	if ( $zoom_level >= 1 && $zoom_level <= 12 ) {
+		$output['zoom_level'] = $zoom_level;
 	} else {
 		$output['zoom_level'] = 3;	
 	}
 
-    $output['google_api_browser_key']  = sanitize_text_field( $_POST['nwm-google-api-browser-key'] );
-    $output['google_api_server_key']  = sanitize_text_field( $_POST['nwm-google-api-server-key'] );
-    $output['flightpath']       = isset( $_POST['nwm-flightpath'] ) ? 1 : 0;
-	$output['curved_lines']     = isset( $_POST['nwm-curved-lines'] ) ? 1 : 0;		
-	$output['round_thumbs']     = isset( $_POST['nwm-round-thumbs'] ) ? 1 : 0;	
-	$output['past_color']       = sanitize_text_field( $_POST['nwm-past-color'] );
-	$output['future_color']     = sanitize_text_field( $_POST['nwm-future-color'] );
-	$output['streetview']       = isset( $_POST['nwm-streetview'] ) ? 1 : 0;	
-	$output['control_position'] = ( wp_filter_nohtml_kses( $_POST['nwm-control-position']  == 'left') ) ? 'left' : 'right';	
-	$output['control_style']    = ( wp_filter_nohtml_kses( $_POST['nwm-control-style'] == 'small' ) ) ? 'small' : 'large';
-	$output['read_more']        = isset( $_POST['nwm-readmore'] ) ? 1 : 0;
-    $output['read_more_label']  = sanitize_text_field( $_POST['nwm-readmore-label'] ); 
-	$output['location_header']  = isset( $_POST['nwm-location-header'] ) ? 1 : 0;
-	$output['content_location'] = ( wp_filter_nohtml_kses( $_POST['nwm-content-location'] == 'slider') ) ? 'slider' : 'tooltip';
-    $output['initial_tooltip']  = isset( $_POST['nwm-initial-tooltip'] ) ? 1 : 0;
-	$output['latlng_input']     = isset( $_POST['nwm-latlng-input'] ) ? 1 : 0;
-	$output['google_maps_style']  = sanitize_textarea_field( wp_unslash( $_POST['nwm-google-maps-style'] ) );
+    $output['google_api_browser_key']  = isset( $post_data['nwm-google-api-browser-key'] ) ? sanitize_text_field( $post_data['nwm-google-api-browser-key'] ) : '';
+    $output['google_api_server_key']  = isset( $post_data['nwm-google-api-server-key'] ) ? sanitize_text_field( $post_data['nwm-google-api-server-key'] ) : '';
+    $output['flightpath']       = isset( $post_data['nwm-flightpath'] ) ? 1 : 0;
+	$output['curved_lines']     = isset( $post_data['nwm-curved-lines'] ) ? 1 : 0;		
+	$output['round_thumbs']     = isset( $post_data['nwm-round-thumbs'] ) ? 1 : 0;	
+	$output['past_color']       = isset( $post_data['nwm-past-color'] ) ? sanitize_text_field( $post_data['nwm-past-color'] ) : '';
+	$output['future_color']     = isset( $post_data['nwm-future-color'] ) ? sanitize_text_field( $post_data['nwm-future-color'] ) : '';
+	$output['streetview']       = isset( $post_data['nwm-streetview'] ) ? 1 : 0;	
+	$output['control_position'] = ( isset( $post_data['nwm-control-position'] ) && $post_data['nwm-control-position'] === 'left' ) ? 'left' : 'right';	
+	$output['control_style']    = ( isset( $post_data['nwm-control-style'] ) && $post_data['nwm-control-style'] === 'small' ) ? 'small' : 'large';
+	$output['read_more']        = isset( $post_data['nwm-readmore'] ) ? 1 : 0;
+    $output['read_more_label']  = isset( $post_data['nwm-readmore-label'] ) ? sanitize_text_field( $post_data['nwm-readmore-label'] ) : ''; 
+	$output['location_header']  = isset( $post_data['nwm-location-header'] ) ? 1 : 0;
+	$output['content_location'] = ( isset( $post_data['nwm-content-location'] ) && $post_data['nwm-content-location'] === 'slider' ) ? 'slider' : 'tooltip';
+    $output['initial_tooltip']  = isset( $post_data['nwm-initial-tooltip'] ) ? 1 : 0;
+	$output['latlng_input']     = isset( $post_data['nwm-latlng-input'] ) ? 1 : 0;
+	$output['google_maps_style']  = isset( $post_data['nwm-google-maps-style'] ) ? sanitize_textarea_field( $post_data['nwm-google-maps-style'] ) : '';
 
     
 	nwm_delete_all_transients();

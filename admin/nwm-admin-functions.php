@@ -657,9 +657,10 @@ function nwm_find_post_title() {
 		}
 	}
 	
-	$post = implode( "', '", $post_types );
-
-	$title = stripslashes( $_POST['post_title'] );
+	$post_types = array_map( 'sanitize_key', $post_types );
+	$post_types = array_filter( $post_types );
+	$type_placeholders = implode( ',', array_fill( 0, count( $post_types ), '%s' ) );
+	$title = isset( $_POST['post_title'] ) ? sanitize_text_field( wp_unslash( $_POST['post_title'] ) ) : '';
 
 	$query_by_id = false;
 	if (ctype_digit($title)) {
@@ -668,30 +669,28 @@ function nwm_find_post_title() {
 	}
 
 	if ($query_by_id) {
+		$query_sql = "
+			SELECT id, post_title
+			FROM $wpdb->posts
+			WHERE post_type IN ($type_placeholders)
+			AND post_status = 'publish'
+			AND id = %d
+		";
+		$query_args = array_merge( $post_types, array( $title ) );
 		$result = $wpdb->get_results(
-				$wpdb->prepare(
-						"
-						SELECT id, post_title
-						FROM $wpdb->posts
-						WHERE post_type IN ('$post')
-						AND post_status = 'publish'
-						AND id = %d
-						",
-						$title
-				), OBJECT
+				$wpdb->prepare( $query_sql, $query_args ), OBJECT
 		);
 	} else {
+		$query_sql = "
+			SELECT id, post_title
+			FROM $wpdb->posts
+			WHERE post_type IN ($type_placeholders)
+			AND post_status = 'publish'
+			AND post_title = %s
+		";
+		$query_args = array_merge( $post_types, array( $title ) );
 		$result = $wpdb->get_results(
-				$wpdb->prepare(
-						"
-						SELECT id, post_title
-						FROM $wpdb->posts
-						WHERE post_type IN ('$post')
-						AND post_status = 'publish'
-						AND post_title = %s
-						",
-						$title
-				), OBJECT
+				$wpdb->prepare( $query_sql, $query_args ), OBJECT
 		);
 	}
 
@@ -710,7 +709,7 @@ function nwm_find_post_title() {
 		$permalink         = get_permalink( $id );
 		$thumb             = wp_get_attachment_image_src( $post_thumbnail_id );
         
-        if ( isset( $thumb ) ) {
+        if ( isset( $thumb[0] ) ) {
             $thumb_url = $thumb[0];
         } else {
             $thumb_url = '';
@@ -721,7 +720,7 @@ function nwm_find_post_title() {
                                      'id'        => $id, 
                                      'permalink' => $permalink,
                                      'thumb_id'  => $post_thumbnail_id,
-                                     'thumb'     => $thumb[0]
+                                     'thumb'     => $thumb_url
                                  ), 
                              );
 				
@@ -763,20 +762,26 @@ function nwm_map_editor_data( $nwm_map_id ) {
     $collected_destinations = array();
     
     if ( isset( $nwm_route_order[$nwm_map_id] ) ) {
-        $route_order = esc_sql( implode( ',', wp_parse_id_list( $nwm_route_order[$nwm_map_id] ) ) );
-        $route_data  = $wpdb->get_results( 
-                                          "SELECT nwm_id, post_id, thumb_id, schedule, lat, lng, location, iso2_country_code, arrival, departure 
-                                           FROM $wpdb->nwm_routes 
-                                           WHERE nwm_id IN ( $route_order ) 
-                                           ORDER BY field(nwm_id, $route_order )
-                                          "
-                                         );   
+        $route_order = wp_parse_id_list( $nwm_route_order[$nwm_map_id] );
+        if ( ! empty( $route_order ) ) {
+            $placeholders = implode( ',', array_fill( 0, count( $route_order ), '%d' ) );
+            $query = "
+                SELECT nwm_id, post_id, thumb_id, schedule, lat, lng, location, iso2_country_code, arrival, departure
+                FROM $wpdb->nwm_routes
+                WHERE nwm_id IN ($placeholders)
+                ORDER BY FIELD(nwm_id, $placeholders)
+            ";
+            $query_args = array_merge( $route_order, $route_order );
+            $route_data = $wpdb->get_results( $wpdb->prepare( $query, $query_args ) );
+        }
     }
     
     if ( $route_data ) {
         foreach ( $route_data as $k => $route_stop ) {	
             if ( !$route_stop->post_id ) {
-                $custom_data = $wpdb->get_results( "SELECT url FROM $wpdb->nwm_custom WHERE nwm_id = $route_stop->nwm_id" );
+                $custom_data = $wpdb->get_results(
+                    $wpdb->prepare( "SELECT url FROM $wpdb->nwm_custom WHERE nwm_id = %d", $route_stop->nwm_id )
+                );
                 $post_id = 0;
                 $url = '';
 
