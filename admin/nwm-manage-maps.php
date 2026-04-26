@@ -14,7 +14,7 @@ function nwm_manage_maps() {
    	<?php
 	
 	/* Check if we just finished an action */
-    $action = ( isset( $_GET['action'] ) ) ? $_GET['action'] : '';
+    $action = isset( $_GET['action'] ) ? sanitize_key( wp_unslash( $_GET['action'] ) ) : '';
     
 	if ( $action ) {
 		switch ( $action ) {
@@ -168,16 +168,18 @@ function nwm_process_map_changes( $nwm_map_ids, $nwm_route_order ) {
 		check_admin_referer( 'nwm_bulkaction' );
 	
 		/* Handle the removal of the map entries or the entire map */
-		if ( ( $_POST['nwm_bulkaction'] == 'delete_entries' ) || ( $_POST['nwm_bulkaction'] == 'delete_map' ) ) {
-			$map_list = wp_parse_id_list( $_POST['maplist'] );
+		$bulk_action = isset( $_POST['nwm_bulkaction'] ) ? sanitize_key( wp_unslash( $_POST['nwm_bulkaction'] ) ) : '';
+		if ( ( $bulk_action == 'delete_entries' ) || ( $bulk_action == 'delete_map' ) ) {
+			$map_list = isset( $_POST['maplist'] ) ? wp_parse_id_list( wp_unslash( $_POST['maplist'] ) ) : array();
 			
 			if ( count( $map_list ) ) {
 				$nwm_post_ids = get_option( 'nwm_post_ids' );
 		
+				$used_nwm_ids = array();
 				foreach ( $map_list as $k => $map_id ) {				
 					/* Collect all the nmw_ids that should be deleted from the db based on the selected map id */
-					if ( $nwm_route_order[$map_id] ) {
-						$used_nwm_ids .= $nwm_route_order[$map_id] . ',';
+					if ( isset( $nwm_route_order[$map_id] ) && $nwm_route_order[$map_id] ) {
+						$used_nwm_ids = array_merge( $used_nwm_ids, wp_parse_id_list( $nwm_route_order[$map_id] ) );
 					}
 					
 					/* Remove the route order and post id values from the option data */
@@ -185,11 +187,18 @@ function nwm_process_map_changes( $nwm_map_ids, $nwm_route_order ) {
 					unset( $nwm_post_ids[$map_id] );
 				}
 				
-				$used_nwm_ids = explode( ',', rtrim( $used_nwm_ids, ',' ) );
-				$used_nwm_ids = esc_sql( implode( ',', wp_parse_id_list( $used_nwm_ids ) ) );
-				
-				/* Delete the route entries from the db */						
-				$result = $wpdb->query( "DELETE FROM $wpdb->nwm_routes WHERE nwm_id IN ( $used_nwm_ids )" );
+				$used_nwm_ids = wp_parse_id_list( $used_nwm_ids );
+				$result = true;
+				/* Delete the route entries from the db */
+				if ( ! empty( $used_nwm_ids ) ) {
+					$placeholders = implode( ',', array_fill( 0, count( $used_nwm_ids ), '%d' ) );
+					$result = $wpdb->query(
+						$wpdb->prepare(
+							"DELETE FROM $wpdb->nwm_routes WHERE nwm_id IN ($placeholders)",
+							$used_nwm_ids
+						)
+					);
+				}
 				
 				if ( $result !== false ) {
 					update_option( 'nwm_route_order', $nwm_route_order );
@@ -197,7 +206,7 @@ function nwm_process_map_changes( $nwm_map_ids, $nwm_route_order ) {
 				}
 				
 				/* Check if we also need to remove the map itself */
-				if ( $_POST['nwm_bulkaction'] == 'delete_map' ) {
+				if ( $bulk_action == 'delete_map' ) {
 					foreach ( $map_list as $k => $map_id ) {
 						
 						/* Prevent the default map from being deleted */
@@ -212,7 +221,7 @@ function nwm_process_map_changes( $nwm_map_ids, $nwm_route_order ) {
 					update_option( 'nwm_map_ids', $nwm_map_ids );
 				}
 				
-				wp_redirect( admin_url( 'admin.php?page=nwm_manage_maps&action=' . esc_attr( $_POST['nwm_bulkaction'] ) . '' ) ); 
+				wp_redirect( admin_url( 'admin.php?page=nwm_manage_maps&action=' . rawurlencode( $bulk_action ) . '' ) ); 
 				exit();
 			}
 		}		
@@ -222,7 +231,7 @@ function nwm_process_map_changes( $nwm_map_ids, $nwm_route_order ) {
 	if ( isset( $_POST['nwm_add_map'] ) ) {
 		check_admin_referer( 'nwm_add_map' );
 				
-		$map_name = esc_attr( $_POST['nwm_map_name'] );
+		$map_name = sanitize_text_field( wp_unslash( $_POST['nwm_map_name'] ) );
 		
 		if ( !empty( $map_name ) ) {
 			$map_ids = get_option( 'nwm_map_ids' );
@@ -245,7 +254,7 @@ function nwm_process_map_changes( $nwm_map_ids, $nwm_route_order ) {
 	if ( isset( $_POST['nwm_update_name'] ) ) {
 		check_admin_referer( 'nwm_update_name' );		
 		
-		$new_name = esc_attr( $_POST['nwm_new_name'] );
+		$new_name = sanitize_text_field( wp_unslash( $_POST['nwm_new_name'] ) );
 		$modified_map_id = absint( $_POST['nwm_map_id'] );
 		
 		if ( ( !empty( $new_name ) ) && ( $modified_map_id ) ) {
