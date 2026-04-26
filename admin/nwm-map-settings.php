@@ -6,9 +6,15 @@ function nwm_settings_page() {
 	global $wpdb;	 
 		
 	$options         = get_option( 'nwm_settings' );
+	$options         = is_array( $options ) ? $options : array();
     $options['initial_tooltip']  = isset( $options['initial_tooltip'] ) ? $options['initial_tooltip'] : 0;
     $options['google_api_browser_key']  = isset( $options['google_api_browser_key'] ) ? $options['google_api_browser_key'] : '';
-    $options['google_api_server_key']  = isset( $options['google_api_server_key'] ) ? $options['google_api_server_key'] : '[ { "featureType": "administrative", "elementType": "labels.text.fill", "stylers": [ { "color": "#444444" } ] }, { "featureType": "administrative.country", "elementType": "geometry", "stylers": [ { "visibility": "off" } ] }, { "featureType": "administrative.country", "elementType": "labels", "stylers": [ { "visibility": "off" } ] }, { "featureType": "landscape", "elementType": "all", "stylers": [ { "color": "#f2f2f2" } ] }, { "featureType": "landscape", "elementType": "labels", "stylers": [ { "visibility": "off" } ] }, { "featureType": "poi", "elementType": "all", "stylers": [ { "visibility": "off" } ] }, { "featureType": "road", "elementType": "all", "stylers": [ { "saturation": -100 }, { "lightness": 45 }, { "visibility": "off" } ] }, { "featureType": "road.highway", "elementType": "all", "stylers": [ { "visibility": "simplified" } ] }, { "featureType": "road.arterial", "elementType": "labels.icon", "stylers": [ { "visibility": "off" } ] }, { "featureType": "transit", "elementType": "all", "stylers": [ { "visibility": "off" } ] }, { "featureType": "water", "elementType": "all", "stylers": [ { "color": "#ffffff" }, { "visibility": "on" } ] } ]';
+    $options['google_api_server_key']  = isset( $options['google_api_server_key'] ) ? $options['google_api_server_key'] : '';
+    $options['google_maps_style']  = isset( $options['google_maps_style'] ) ? $options['google_maps_style'] : '[ { "featureType": "administrative", "elementType": "labels.text.fill", "stylers": [ { "color": "#444444" } ] }, { "featureType": "administrative.country", "elementType": "geometry", "stylers": [ { "visibility": "off" } ] }, { "featureType": "administrative.country", "elementType": "labels", "stylers": [ { "visibility": "off" } ] }, { "featureType": "landscape", "elementType": "all", "stylers": [ { "color": "#f2f2f2" } ] }, { "featureType": "landscape", "elementType": "labels", "stylers": [ { "visibility": "off" } ] }, { "featureType": "poi", "elementType": "all", "stylers": [ { "visibility": "off" } ] }, { "featureType": "road", "elementType": "all", "stylers": [ { "saturation": -100 }, { "lightness": 45 }, { "visibility": "off" } ] }, { "featureType": "road.highway", "elementType": "all", "stylers": [ { "visibility": "simplified" } ] }, { "featureType": "road.arterial", "elementType": "labels.icon", "stylers": [ { "visibility": "off" } ] }, { "featureType": "transit", "elementType": "all", "stylers": [ { "visibility": "off" } ] }, { "featureType": "water", "elementType": "all", "stylers": [ { "color": "#ffffff" }, { "visibility": "on" } ] } ]';
+
+    if ( strpos( $options['google_api_server_key'], 'featureType' ) !== false ) {
+        $options['google_api_server_key'] = '';
+    }
     $nwm_route_order = get_option( 'nwm_route_order' );
 	?>
     <div class="wrap">
@@ -167,7 +173,7 @@ function nwm_settings_page() {
                         <div class="postbox">
                             <h3 class="hndle"><span><?php _e( 'Map Style', 'nwm' ); ?></span></h3>
                             <div class="inside">
-								<p><textarea id="nwm-google-maps-style" rows="25" name="nwm-google-maps-style" class="widefat textarea"><?php echo esc_js( $options['google_maps_style'] ); ?></textarea>
+								<p><textarea id="nwm-google-maps-style" rows="25" name="nwm-google-maps-style" class="widefat textarea"><?php echo esc_textarea( $options['google_maps_style'] ); ?></textarea>
 								<br/>
                                     <?php echo sprintf(
                                         __('<b>Note:</b> Map Styles can be created via Snazzy Maps <a href="%s" target="_blank">here</a>.', 'nvm'),
@@ -240,7 +246,7 @@ function nwm_settings_check() {
 	$output['content_location'] = ( wp_filter_nohtml_kses( $_POST['nwm-content-location'] == 'slider') ) ? 'slider' : 'tooltip';
     $output['initial_tooltip']  = isset( $_POST['nwm-initial-tooltip'] ) ? 1 : 0;
 	$output['latlng_input']     = isset( $_POST['nwm-latlng-input'] ) ? 1 : 0;
-	$output['google_maps_style']  = sanitize_text_field($_POST['nwm-google-maps-style']);
+	$output['google_maps_style']  = sanitize_textarea_field( wp_unslash( $_POST['nwm-google-maps-style'] ) );
 
     
 	nwm_delete_all_transients();

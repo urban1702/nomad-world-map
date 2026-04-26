@@ -470,9 +470,11 @@ function nwm_get_post_excerpt ( $post_id ) {
 function nwm_frontend_scripts( $frontend_data, $map_count ) {
     
 	wp_enqueue_style( 'nwm', NWM_URL . 'css/styles.css', false );
-	wp_enqueue_script( 'nwm-gmap', ( nvm_add_key_to_gmaps_url("//maps.google.com/maps/api/js") ),'' ,'' ,true );
-	wp_enqueue_script( 'nwm-gmap3', NWM_URL . 'js/gmap3.min.js', array( 'jquery' ) ); /* the not minified version of gmap3 library is in the js folder -> gmap3.js */
-	wp_enqueue_script( 'nwm-gmap-markers', NWM_URL . 'js/nwm-gmap3.js' );
+	wp_enqueue_script( 'nwm-gmap', ( nvm_add_key_to_gmaps_url( 'https://maps.googleapis.com/maps/api/js' ) ),'' ,'' ,true );
+	wp_enqueue_script( 'nwm-gmap3', NWM_URL . 'js/gmap3.min.js', array( 'jquery', 'nwm-gmap' ) ); /* the not minified version of gmap3 library is in the js folder -> gmap3.js */
+	wp_enqueue_script( 'nwm-gmap-markers', NWM_URL . 'js/nwm-gmap3.js', array( 'jquery', 'nwm-gmap', 'nwm-gmap3' ) );
+
+	$google_maps_style = isset( $frontend_data['settings']['google_maps_style'] ) ? $frontend_data['settings']['google_maps_style'] : '';
 
     /* We only need to add the general map settings on the first loop */
     if ( $map_count == 0 ) {
@@ -489,7 +491,7 @@ function nwm_frontend_scripts( $frontend_data, $map_count ) {
              'readMoreLabel'   => sanitize_text_field( stripslashes( $frontend_data['settings']['read_more_label'] ) ),
              'locationHeader'  => $frontend_data['settings']['location_header'],
 			 'hideTooltip'  => $frontend_data['settings']['initial_tooltip'],
-			 'googleMapsStyle'  => sanitize_text_field( stripslashes($frontend_data['settings']['google_maps_style'] ) ),
+			 'googleMapsStyle'  => sanitize_text_field( stripslashes( $google_maps_style ) ),
          );
 
          wp_localize_script( 'nwm-gmap-markers', 'nwmSettings', $params );

@@ -112,15 +112,51 @@ function nwm_update_country_code( $country_code, $nwm_id ) {
     
 }
 
+function nwm_is_probably_google_api_key( $key ) {
+    $key = trim( (string) $key );
+
+    if ( $key === '' ) {
+        return false;
+    }
+
+    /* Guard against accidentally saved JSON/style payloads. */
+    if ( strpos( $key, '{' ) !== false || strpos( $key, '[' ) !== false || strpos( $key, 'featureType' ) !== false ) {
+        return false;
+    }
+
+    /*
+     * Google API keys are URL-safe and usually start with AIza.
+     * Keep this permissive enough for legacy keys, but reject obvious garbage.
+     */
+    if ( preg_match( '/^[A-Za-z0-9_-]{20,}$/', $key ) !== 1 ) {
+        return false;
+    }
+
+    return true;
+}
+
 function nvm_add_key_to_gmaps_url($url, $type='browser')
 {
 
     $options  = get_option( 'nwm_settings' );
+    $options  = is_array( $options ) ? $options : array();
+    $browser_key = isset( $options['google_api_browser_key'] ) ? trim( $options['google_api_browser_key'] ) : '';
+    $server_key  = isset( $options['google_api_server_key'] ) ? trim( $options['google_api_server_key'] ) : '';
 
     if ($type == 'server') {
-        $key  = isset( $options['google_api_server_key'] ) ? $options['google_api_server_key'] : '';
+        $key = nwm_is_probably_google_api_key( $server_key ) ? $server_key : '';
     } else {
-        $key  = isset( $options['google_api_browser_key'] ) ? $options['google_api_browser_key'] : '';
+        /*
+         * Prefer browser key for JS API, but allow server key fallback only
+         * when it looks like a real key.
+         */
+        if ( nwm_is_probably_google_api_key( $browser_key ) ) {
+            $key = $browser_key;
+        } elseif ( nwm_is_probably_google_api_key( $server_key ) ) {
+            $key = $server_key;
+        } else {
+            $key = '';
+        }
     }
 
     // If no key added no point in checking
@@ -130,9 +166,6 @@ function nvm_add_key_to_gmaps_url($url, $type='browser')
 
     if (strstr($url, "key=") === false) {// it needs a key
         $url = add_query_arg('key', $key, $url);
-        if ($type != 'server') {
-            $url = str_replace("&#038;", "&amp;", $url); // or $url = $original_url
-        }
     }
 
     return $url;

@@ -92,7 +92,7 @@ class NWM_Widget extends WP_Widget {
             </style>
 
             <script type="text/javascript">
-                var nwm_google_src_url = '<?php echo nvm_add_key_to_gmaps_url("//maps.google.com/maps/api/js?callback=handleApiReady"); ?>';
+                var nwm_google_src_url = '<?php echo nvm_add_key_to_gmaps_url( 'https://maps.googleapis.com/maps/api/js?callback=handleApiReady' ); ?>';
             </script>
             <?php
 
@@ -323,7 +323,10 @@ class NWM_Widget extends WP_Widget {
     }
 }
 
-add_action( 'widgets_init',
-     create_function( '', 'return register_widget( "NWM_Widget" );' )
+add_action(
+    'widgets_init',
+    function() {
+        return register_widget( 'NWM_Widget' );
+    }
 );
 

@@ -1089,6 +1089,10 @@ function nwm_check_icon_font_usage() {
  * @return array $admin_js_l10n All the text available for translation in the nwm-admin.js file
  */
 function nwm_admin_js_l10n() {
+    $options = get_option( 'nwm_settings' );
+    $options = is_array( $options ) ? $options : array();
+    $google_maps_style = isset( $options['google_maps_style'] ) ? $options['google_maps_style'] : '[]';
+
     $admin_js_l10n = array(
         'locationImage'     => __( 'Set Location Image', 'nwm' ),
         'wordsRemaining'    => __( 'words remaining', 'nwm' ),
@@ -1110,7 +1114,8 @@ function nwm_admin_js_l10n() {
         'addressFailed'     => __( 'Cannot determine address at this location.', 'nwm' ),
         'locationPosition'  => __( 'After the last item', 'nwm' ),
         'currentPosition'   => __( 'Current position', 'nwm'),
-        'before'            => __( 'Before', 'nwm' )
+        'before'            => __( 'Before', 'nwm' ),
+        'googleMapsStyle'   => $google_maps_style
     );
 
     return $admin_js_l10n;
@@ -1137,8 +1142,8 @@ function nwm_admin_scripts() {
         wp_enqueue_script( 'json2' );
 
         wp_enqueue_style( 'nwm-admin-css', plugins_url( '/css/style.css', __FILE__ ), false );
-        wp_enqueue_script( 'nwm-gmap', ( nvm_add_key_to_gmaps_url("//maps.google.com/maps/api/js") ), false, '', true );
-        wp_enqueue_script( 'nwm-admin-js', plugins_url( '/js/nwm-admin.js', __FILE__ ), array('jquery', 'wp-color-picker'), false );
+        wp_enqueue_script( 'nwm-gmap', ( nvm_add_key_to_gmaps_url( 'https://maps.googleapis.com/maps/api/js' ) ), false, '', true );
+        wp_enqueue_script( 'nwm-admin-js', plugins_url( '/js/nwm-admin.js', __FILE__ ), array( 'jquery', 'wp-color-picker', 'nwm-gmap' ), false );
         wp_enqueue_script( 'jquery-queue', plugins_url( '/js/ajax-queue.js', __FILE__ ), array('jquery'), false );
 
         wp_localize_script( 'nwm-admin-js', 'nwmL10n', nwm_admin_js_l10n() );

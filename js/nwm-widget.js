@@ -5,6 +5,9 @@
  * @return void
  */
 function appendBootstrap() {
+	if ( !nwm_google_src_url ) {
+		return;
+	}
 	if ( typeof google === "object" && typeof google.maps === "object" ) {
 		handleApiReady();
 	} else {
@@ -26,6 +29,9 @@ function appendBootstrap() {
  * @return void
  */
 function handleApiReady() {
+	if ( typeof google !== "object" || typeof google.maps !== "object" ) {
+		return;
+	}
 	var widgetLatLng = nwmWidget.latlng.split(','),
 		currentLatlng = new google.maps.LatLng( widgetLatLng[0], widgetLatLng[1] );
 	

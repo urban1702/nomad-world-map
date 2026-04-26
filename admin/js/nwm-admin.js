@@ -5,16 +5,42 @@ var map, geocoder, preloadImgSrc, uploadFrame,
 	markersArray	= [], 
 	flightPlanArray = [],
 	preloadImgSrc   = $( "#nwm-preload-img img" ).attr( "src" ),
-	defaultLatlng	= new google.maps.LatLng( "53.551085", "9.993682" ),
+	defaultLatlng	= null,
+	hasGoogleMaps   = ( typeof window.google === "object" && typeof window.google.maps === "object" ),
 	url				= window.location.href;
+
+function showDevModeMapNotice() {
+	$( "#gmap-nwm" )
+		.addClass( "nwm-dev-map-fallback" )
+		.css({
+			"display": "flex",
+			"align-items": "center",
+			"justify-content": "center",
+			"min-height": "320px",
+			"background": "#f6f7f7",
+			"border": "1px solid #dcdcde",
+			"color": "#50575e",
+			"text-align": "center",
+			"padding": "20px"
+		})
+		.html( "<p><strong>Developer mode:</strong> Map preview disabled (no Google API key). You can still edit and save routes.</p>" );
+}
 
 /* Load Google Maps */
 function initializeGmap() { 
+	if ( !hasGoogleMaps ) {
+		showDevModeMapNotice();
+		return;
+	}
+	defaultLatlng = new google.maps.LatLng( "53.551085", "9.993682" );
+	var mapStyles = parseMapStyles( nwmL10n.googleMapsStyle );
+
 	var myOptions = {
 			zoom: 2,
 			center: defaultLatlng,
 			mapTypeId: google.maps.MapTypeId.ROADMAP,
 			streetViewControl: false,
+			styles: mapStyles
 		};
 
 	map		 = new google.maps.Map( document.getElementById( "gmap-nwm" ), myOptions );
@@ -23,8 +49,33 @@ function initializeGmap() {
 	rebuildFlightPlan();
 }
 
+function parseMapStyles( styleValue ) {
+	if ( typeof styleValue === "undefined" || !styleValue.length ) {
+		return [];
+	}
+
+	try {
+		return JSON.parse( styleValue );
+	} catch ( e ) {
+		try {
+			/* Legacy saved values may contain extra escaping from old settings form output. */
+			return JSON.parse( styleValue.replace( /\\"/g, '"' ) );
+		} catch ( err ) {
+			try {
+				/* Accept JS object notation exports if strict JSON parsing fails. */
+				return Function( "return (" + styleValue + ");" )();
+			} catch ( evalErr ) {
+				return [];
+			}
+		}
+	}
+}
+
 /* Show the correct flightplan for the selected map. */
 function rebuildFlightPlan() {
+	if ( !hasGoogleMaps || !map ) {
+		return;
+	}
 	var latlng, alt, draggable, location;
 		
 	deleteOverlays();
@@ -71,6 +122,9 @@ function deleteOverlays() {
 
 /* Draw lines between all markers */
 function drawFlightPlan( flightPlanCoordinates ) {	
+	if ( !hasGoogleMaps || !map ) {
+		return;
+	}
 	var trCount    = $( "#nwm-destination-list tbody tr" ).length,
 		tableId    = $( "#nwm-destination-list" ).attr( "data-map-id" ),
 		mapListId  = $( "#nwm-map-list" ).val(),
@@ -103,6 +157,9 @@ function drawFlightPlan( flightPlanCoordinates ) {
 
 /* Zoom the map so that all markers fit in the window */
 function fitBounds( flightPlanCoordinates ) {
+	if ( !hasGoogleMaps || !map ) {
+		return;
+	}
 	var maxZoom = 4,
 		bounds = new google.maps.LatLngBounds( defaultLatlng );
 	
@@ -122,6 +179,9 @@ function fitBounds( flightPlanCoordinates ) {
 
 /* Add a new marker to the map based on the provided location (latlng) */
 function addMarker( location, alt, draggable_state ) {
+	if ( !hasGoogleMaps || !map ) {
+		return;
+	}
 	var image, marker;
 		
 	if ( !draggable_state ) {
@@ -247,6 +307,9 @@ function stripCoordinates( coordinates ) {
 
 /* Geocode the user input */ 
 function codeAddress() {
+	if ( !hasGoogleMaps || !geocoder ) {
+		return;
+	}
     var fullLocation, lastIndex, draggable, alt,
 		address = $( "#nwm-searched-location" ).val();
 		
@@ -1367,6 +1430,9 @@ function setEditFormContent( dropdownValue ) {
 }
 
 function setDraggableLocation( latlng, zoom ) {
+	if ( !hasGoogleMaps || !map ) {
+		return;
+	}
 	var latlng, location, alt, draggable;
 		
 	latlng = latlng.split( ",", 2),
@@ -1739,6 +1805,9 @@ $( "#preview-nwm-latlng" ).on( "click", function() {
 });
 
 function changeMarkerPosition( adjustedLatlng, i ) {
+	if ( !hasGoogleMaps ) {
+		return;
+	}
 	var latlng = adjustedLatlng.split( "," );
 		latlng = new google.maps.LatLng( latlng[0], latlng[1] );	
 
